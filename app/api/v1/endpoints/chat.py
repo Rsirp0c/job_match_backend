@@ -2,14 +2,12 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from app.schemas.chat import ChatRequest, Message
 from app.core.llm import cohere_client as co
-from cohere.types import CitationOptions
 from typing import List
 import json
 
 router = APIRouter()
 
 async def generate_stream(messages: List[Message], context: List[str]):
-    # print("messages :", messages)  # Debugging, can be removed
     try:
         documents = [{"id": str(idx + 1), "data": doc} for idx, doc in enumerate(context)] if context else []
         
@@ -28,7 +26,7 @@ async def generate_stream(messages: List[Message], context: List[str]):
 
                 elif event.type == "citation-start":
                     # Convert citations to a serializable format
-                    print("citation-start: ",event.delta.message.citations)
+                    
                     citations = [
                         {
                             "start": event.delta.message.citations.start,

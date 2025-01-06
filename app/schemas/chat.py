@@ -18,3 +18,11 @@ class VectorQuery(BaseModel):
 class VectorQueryResponse(BaseModel):
     matches: List[Dict]
     metadata: Optional[Dict] = None
+
+class AgentQuery(BaseModel):
+    query: str
+
+class AgentResponse(BaseModel):
+    needs_vector_search: bool
+    reasoning: str
+    modified_query: Optional[str] = None
