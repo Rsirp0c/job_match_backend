@@ -1,10 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 from app.core.llm import cohere_client
-from app.schemas.chat import AgentQuery, AgentResponse
+from app.core.vector_store import pinecone_index
+from app.schemas.chat import AgentQuery, AgentResponse, CombinedResponse
+
+import asyncio
 import json
 
 router = APIRouter()
+
 
 async def analyze_query(
     query: str,
@@ -13,6 +17,7 @@ async def analyze_query(
     Analyze the query to determine if it needs vector search for job-related information
     or can be answered with general knowledge.
     """
+    
     system_prompt = """You are an agent that determines if a user query needs job search capabilities.
     Analyze the query and decide if it:
     1. Needs job search (queries about specific jobs, companies, positions, salaries, etc.)
@@ -77,18 +82,65 @@ async def analyze_query(
             modified_query=query
         )
 
-@router.post("/analyze", response_model=AgentResponse)
-async def analyze_query_endpoint(query_request: AgentQuery):
+
+async def get_vector_search(query: str):
+    """Perform vector search asynchronously"""
+    try:
+        # Generate embedding
+        query_embedding = cohere_client.embed(
+            texts=[query],
+            model="embed-english-v3.0",
+            input_type="search_query",
+            embedding_types=['float']
+        ).embeddings.float[0]
+        
+        # Search Pinecone
+        search_response = pinecone_index.query(
+            vector=query_embedding,
+            top_k=3,
+            include_metadata=True
+        )
+        
+        return [
+            {
+                "id": match.id,
+                "score": match.score,
+                "metadata": match.metadata
+            } for match in search_response.matches
+        ]
+    except Exception as e:
+        print(f"Vector search error: {str(e)}")
+        return []
+
+
+async def analyze_and_search(query: str) -> CombinedResponse:
     """
-    Endpoint to analyze a query for vector search requirements.
+    Combines query analysis and vector search into a single operation
+    """
+    # Run analysis and vector search concurrently
+    analysis_task = analyze_query(query)
+    vector_task = get_vector_search(query)
+    
+    analysis_result, vector_results = await asyncio.gather(
+        analysis_task,
+        vector_task
+    )
+    
+    return CombinedResponse(
+        analysis=analysis_result,
+        vector_results=vector_results if analysis_result.needs_vector_search else []
+    )
+
+@router.post("/analyze_and_search", response_model=CombinedResponse)
+async def combined_analysis_endpoint(query_request: AgentQuery):
+    """
+    Combined endpoint for query analysis and vector search
     """
     try:
-        result = await analyze_query(
-            query_request.query
-        )
+        result = await analyze_and_search(query_request.query)
         return result
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error analyzing query: {str(e)}"
+            detail=f"Error processing query: {str(e)}"
         )

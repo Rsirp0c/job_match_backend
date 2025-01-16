@@ -26,3 +26,7 @@ class AgentResponse(BaseModel):
     needs_vector_search: bool
     reasoning: str
     modified_query: Optional[str] = None
+
+class CombinedResponse(BaseModel):
+    analysis: AgentResponse
+    vector_results: List[Dict] = []  # Using List[Dict] to match the vector search response format

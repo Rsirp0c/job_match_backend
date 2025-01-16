@@ -2,12 +2,13 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from app.schemas.chat import ChatRequest, Message
 from app.core.llm import cohere_client as co
-from typing import List
+from typing import List, AsyncGenerator
 import json
+import asyncio
 
 router = APIRouter()
 
-async def generate_stream(messages: List[Message], context: List[str]):
+async def generate_stream(messages: List[Message], context: List[str]) -> AsyncGenerator[str, None]:
     try:
         documents = [{"id": str(idx + 1), "data": doc} for idx, doc in enumerate(context)] if context else []
         
@@ -18,15 +19,14 @@ async def generate_stream(messages: List[Message], context: List[str]):
             temperature=0.3,
         )
 
-        # Stream the response
         for event in res:
             if event:
                 if event.type == "content-delta":
-                    yield f"data: {event.delta.message.content.text}\n\n"
+                    yield f"data: {json.dumps(event.delta.message.content.text)}\n\n"
+                    # Add a small delay to prevent overwhelming the connection
+                    # await asyncio.sleep(0.01)
 
                 elif event.type == "citation-start":
-                    # Convert citations to a serializable format
-                    
                     citations = [
                         {
                             "start": event.delta.message.citations.start,
@@ -40,35 +40,26 @@ async def generate_stream(messages: List[Message], context: List[str]):
                         "citations": citations
                     }
                     yield f"data: {json.dumps(citation_data)}\n\n"
+                    await asyncio.sleep(0.01)
 
             elif event.event_type == "stream-end":
-                yield f"data: .\n\n"
-                yield f"data: [DONE]\n\n"
+                yield "data: .\n\n"
+                yield "data: [DONE]\n\n"
 
     except Exception as e:
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
-        yield f"data: [DONE]\n\n"
+        yield "data: [DONE]\n\n"
 
 @router.post("/stream")
 async def chat_stream(request: ChatRequest):
     if request.stream:
         return StreamingResponse(
             generate_stream(request.messages, request.context),
-            media_type="text/event-stream"
+            media_type="text/event-stream",
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Transfer-Encoding': 'chunked'
+            }
         )
-    else:
-        try:
-            documents = [{"id": str(idx + 1), "data": doc} for idx, doc in enumerate(request.context.split())] if request.context else []
-            current_message = request.messages[-1].content
-            message_with_context = current_message
-            if request.context:
-                message_with_context = f"Context: {request.context}\n\nQuestion: {message_with_context}"
-            
-            response = await co.chat(
-                message=message_with_context,
-                model='command',
-                documents=documents  
-            )
-            return {"response": response.text}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+    
