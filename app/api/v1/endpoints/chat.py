@@ -52,14 +52,21 @@ async def generate_stream(messages: List[Message], context: List[str]) -> AsyncG
 
 @router.post("/stream")
 async def chat_stream(request: ChatRequest):
-    if request.stream:
+    try:
         return StreamingResponse(
             generate_stream(request.messages, request.context),
             media_type="text/event-stream",
             headers={
                 'Cache-Control': 'no-cache',
                 'Connection': 'keep-alive',
-                'Transfer-Encoding': 'chunked'
+                'Transfer-Encoding': 'chunked',
+                'Access-Control-Allow-Origin': '*',  # Or specify your frontend domain
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': '*',
+                'Access-Control-Allow-Credentials': 'true'
             }
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
+        
