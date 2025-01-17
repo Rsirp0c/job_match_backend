@@ -60,7 +60,7 @@ async def chat_stream(request: ChatRequest):
                 'Cache-Control': 'no-cache',
                 'Connection': 'keep-alive',
                 'Transfer-Encoding': 'chunked',
-                'Access-Control-Allow-Origin': '*',  # Or specify your frontend domain
+                'Access-Control-Allow-Origin': 'https://jobs-chatbot.vercel.app',  
                 'Access-Control-Allow-Methods': 'POST, OPTIONS',
                 'Access-Control-Allow-Headers': '*',
                 'Access-Control-Allow-Credentials': 'true'
