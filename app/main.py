@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import router as api_router
+import logging
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = FastAPI(title="Vector Search and Chat API")
 

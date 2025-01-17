@@ -25,7 +25,7 @@ async def generate_stream(messages: List[Message], context: List[str]) -> AsyncG
                     if event:
                         if event.type == "content-delta":
                             yield f"data: {json.dumps(event.delta.message.content.text)}\n\n"
-                            await asyncio.sleep(0.01)
+                            # await asyncio.sleep(0.01)
                         elif event.type == "citation-start":
                             citations = [
                                 {
