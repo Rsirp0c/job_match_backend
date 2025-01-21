@@ -24,8 +24,6 @@ class AgentQuery(BaseModel):
 
 class AgentResponse(BaseModel):
     needs_vector_search: bool
-    reasoning: str
-    modified_query: Optional[str] = None
 
 class CombinedResponse(BaseModel):
     analysis: AgentResponse

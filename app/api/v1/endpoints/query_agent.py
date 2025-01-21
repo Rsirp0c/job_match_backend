@@ -20,9 +20,7 @@ async def analyze_query(
     
     Return your decision in JSON format:
     {
-        "needs_vector_search": boolean,
-        "reasoning": "brief explanation",
-        "modified_query": "optional modified query for better search results"
+        "needs_vector_search": boolean
     }
     
     Examples:
@@ -39,11 +37,9 @@ async def analyze_query(
     schema = {
     "type": "object",
     "properties": {
-        "needs_vector_search": {"type": "boolean"},
-        "reasoning": {"type": "string"},
-        "modified_query": {"type": "string"}
+        "needs_vector_search": {"type": "boolean"}
     },
-    "required": [ "needs_vector_search", "reasoning" ]
+    "required": [ "needs_vector_search"]
 }
     
     try:
@@ -63,18 +59,14 @@ async def analyze_query(
             raise ValueError("Invalid response content format.")
 
         return AgentResponse(
-            needs_vector_search=parsed_content.get("needs_vector_search", True),
-            reasoning=parsed_content.get("reasoning", ""),
-            modified_query=parsed_content.get("modified_query", query)
+            needs_vector_search=parsed_content.get("needs_vector_search"),
         )
         
         
     except Exception as e:
         # Default to using vector search if there's an error
         return AgentResponse(
-            needs_vector_search=True,
-            reasoning=f"Error in analysis, defaulting to vector search: {str(e)}",
-            modified_query=query
+            needs_vector_search=False,
         )
 
 @router.post("/analyze", response_model=AgentResponse)
